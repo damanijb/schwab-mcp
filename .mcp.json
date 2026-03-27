@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "schwab": {
-      "command": "bun",
-      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/../src/index.ts"],
+      "command": "/home/damani/.bun/bin/bun",
+      "args": ["run", "/home/damani/schwab-mcp/src/index.ts"],
       "env": {
         "SCHWAB_ENABLE_TRADING": "true"
       }
