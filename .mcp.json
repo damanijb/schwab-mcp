@@ -2,7 +2,7 @@
   "mcpServers": {
     "schwab": {
       "command": "bun",
-      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/src/index.ts"],
+      "args": ["run", "--cwd", "${CLAUDE_PLUGIN_ROOT}/..", "--silent", "start"],
       "env": {
         "SCHWAB_ENABLE_TRADING": "true"
       }
