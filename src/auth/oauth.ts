@@ -1,5 +1,7 @@
 import { getConfig, SCHWAB_AUTH_URL } from "./config.js";
 import { exchangeCodeForTokens } from "./tokens.js";
+import { spawn } from "child_process";
+import { platform } from "os";
 
 export function getAuthUrl(): string {
   const config = getConfig();
@@ -16,27 +18,41 @@ interface OAuthResult {
   authUrl?: string;
 }
 
+/** Open a URL in the default browser (cross-platform) */
+function openBrowser(url: string): void {
+  const os = platform();
+  try {
+    if (os === "darwin") spawn("open", [url], { detached: true, stdio: "ignore" });
+    else if (os === "win32") spawn("cmd", ["/c", "start", url], { detached: true, stdio: "ignore" });
+    else spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
+  } catch {
+    // Browser open is best-effort — the URL is returned in the result
+  }
+}
+
 /**
- * Start OAuth flow:
- * 1. Return the auth URL for the user to open
- * 2. Start a temporary callback server to catch the redirect
- * 3. Exchange the code for tokens
+ * Start OAuth flow with callback server.
+ * Opens the browser automatically, starts a local server to catch the redirect,
+ * and waits up to 5 minutes for the callback with the auth code.
+ * Returns only after tokens are exchanged or timeout.
  */
-export async function startOAuthFlow(): Promise<OAuthResult> {
+export async function startOAuthFlow(openUrl = true): Promise<OAuthResult> {
   const config = getConfig();
   const authUrl = getAuthUrl();
 
-  // Parse callback URL to get host/port
   const callbackParsed = new URL(config.callbackUrl);
   const port = parseInt(callbackParsed.port) || 8182;
   const pathname = callbackParsed.pathname || "/callback";
+
+  // Open browser before starting server
+  if (openUrl) openBrowser(authUrl);
 
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       server.stop();
       resolve({
         success: false,
-        message: "OAuth timeout — no callback received within 5 minutes",
+        message: "OAuth timeout — no callback received within 5 minutes. Open the authUrl manually and try again.",
         authUrl,
       });
     }, 5 * 60 * 1000);
@@ -89,12 +105,6 @@ export async function startOAuthFlow(): Promise<OAuthResult> {
 
         return new Response("Not found", { status: 404 });
       },
-    });
-
-    resolve({
-      success: true,
-      message: `OAuth server listening on port ${port}. Open the auth URL to authenticate.`,
-      authUrl,
     });
   });
 }

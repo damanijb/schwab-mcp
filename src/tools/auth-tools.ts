@@ -93,11 +93,19 @@ export function registerAuthTools(server: McpServer) {
 
   server.tool(
     "start_oauth",
-    "Start Schwab OAuth2 authentication flow. Returns auth URL to open in browser. Optionally pass redirect_url if you already have the callback URL with the code.",
-    { redirect_url: z.string().optional().describe("If you already have the redirect URL with the auth code, pass it here to skip the browser flow") },
-    async ({ redirect_url }) => {
+    "Start Schwab OAuth2 authentication. Opens browser automatically, starts callback server, waits for auth to complete. Pass redirect_url to skip browser if you already have the callback URL.",
+    {
+      redirect_url: z.string().optional().describe("If you already have the redirect URL with the auth code, pass it here to skip the browser flow"),
+      open_browser: z.boolean().optional().default(true).describe("Open browser automatically (default true). Set false for headless environments."),
+    },
+    async ({ redirect_url, open_browser }) => {
       if (redirect_url) {
         const result = await manualOAuth(redirect_url);
+        if (result.success) {
+          // Restart the refresh loop now that we have tokens
+          const { startTokenRefreshLoop } = await import("../auth/tokens.js");
+          startTokenRefreshLoop();
+        }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
           isError: !result.success,
@@ -105,25 +113,35 @@ export function registerAuthTools(server: McpServer) {
       }
 
       const authUrl = getAuthUrl();
-      // Try to start callback server in the background
-      startOAuthFlow().catch(() => {});
+
+      // Start callback server and wait for the auth code (blocks until complete or timeout)
+      const result = await startOAuthFlow(open_browser);
+
+      if (result.success && result.message.includes("tokens saved")) {
+        // Auth complete — start refresh loop
+        const { startTokenRefreshLoop } = await import("../auth/tokens.js");
+        startTokenRefreshLoop();
+      }
 
       return {
         content: [
           {
             type: "text" as const,
             text: JSON.stringify({
-              message: "Open this URL in a browser to authenticate with Schwab",
-              authUrl,
-              instructions: [
-                "1. Open the authUrl in a browser",
-                "2. Log in to Schwab and authorize",
-                "3. After redirect, tokens will be saved automatically",
-                "4. If auto-capture fails, copy the redirect URL and call this tool again with redirect_url parameter",
-              ],
+              ...result,
+              authUrl: result.success ? undefined : authUrl,
+              instructions: result.success
+                ? undefined
+                : [
+                    "Browser didn't open? Copy this URL manually:",
+                    authUrl,
+                    "After authorizing, the callback will be captured automatically.",
+                    "Or copy the redirect URL and call start_oauth with redirect_url parameter.",
+                  ],
             }, null, 2),
           },
         ],
+        isError: !result.success,
       };
     }
   );
