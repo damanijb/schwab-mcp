@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -28,6 +28,23 @@ function loadConfigFile(): Partial<SchwabConfig> {
   }
 }
 
+export function saveConfigFile(config: {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl?: string;
+}): void {
+  mkdirSync(CONFIG_DIR, { recursive: true });
+  const existing = loadConfigFile();
+  const merged = {
+    ...existing,
+    clientId: config.clientId,
+    clientSecret: config.clientSecret,
+    callbackUrl: config.callbackUrl || existing.callbackUrl || "https://127.0.0.1:8182/callback",
+    tokenPath: existing.tokenPath || join(CONFIG_DIR, "tokens.json"),
+  };
+  writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2));
+}
+
 export function getConfig(): SchwabConfig {
   const file = loadConfigFile();
   return {
@@ -43,6 +60,11 @@ export function getConfig(): SchwabConfig {
       join(CONFIG_DIR, "tokens.json"),
     enableTrading: process.env.SCHWAB_ENABLE_TRADING === "true",
   };
+}
+
+export function isConfigured(): boolean {
+  const config = getConfig();
+  return !!(config.clientId && config.clientSecret);
 }
 
 export const SCHWAB_AUTH_URL = "https://api.schwabapi.com/v1/oauth/authorize";

@@ -1,6 +1,6 @@
 ---
 name: schwab-auth
-description: Authenticate with Schwab brokerage — check token status, refresh tokens, or start full OAuth flow. Use when user mentions Schwab login, token expired, authentication issues, or when any Schwab MCP tool returns an auth error.
+description: Authenticate with Schwab brokerage — full setup from scratch, token refresh, or OAuth flow. Use when user mentions Schwab login, token expired, authentication issues, first-time setup, or when any Schwab MCP tool returns an auth error.
 ---
 
 # Schwab Authentication
@@ -8,26 +8,33 @@ description: Authenticate with Schwab brokerage — check token status, refresh 
 Follow these steps in order. Stop as soon as auth is confirmed.
 
 ## Step 1: Check current status
-Call the `auth_status` MCP tool. Read the result carefully.
+Call the `auth_status` tool. Read the `next_step` field to know what to do.
 
-## Step 2: Branch on status
+## Step 2: Branch on the response
 
-**If `authenticated: true` and access token has >5 min remaining:**
+### If `configured: false` (first-time setup)
+1. Ask the user for their Schwab API credentials (client_id and client_secret from developer.schwab.com)
+2. Call `setup` with those credentials
+3. Then call `start_oauth` — this opens the browser automatically and blocks until login completes
+4. Tell the user: "Schwab login is opening in your browser. Log in and authorize the app — I'll wait."
+5. Wait for the tool to return, then call `auth_status` to confirm
+
+### If `configured: true, authenticated: false` and no tokens
+- Call `start_oauth` — tell user the browser is opening
+- Wait for it to complete
+- Call `auth_status` to confirm
+
+### If `next_step: "refresh_token"`
+- Call `refresh_token`
+- If success: done
+- If fail: call `start_oauth`
+
+### If `authenticated: true`
 - Report: "Schwab authenticated. Access token: Xm remaining. Refresh token: Xd remaining."
-- If refresh token has <2 days remaining, warn: "Refresh token expiring soon — re-authenticate within X days to avoid losing access."
+- If refresh token <2 days, warn about upcoming expiration
 - Done.
 
-**If access token expired but `refresh_token.present: true` and `estimated_days_remaining > 0`:**
-- Call `refresh_token` tool
-- If success: report new expiration, done
-- If fail: proceed to Step 3
-
-**If no tokens, refresh failed, or refresh token expired:**
-- Proceed to Step 3
-
-## Step 3: Full OAuth flow
-- Call `start_oauth` tool (this opens the browser and blocks until complete)
-- Tell the user: "Opening Schwab login in your browser. Complete the login and the tokens will be captured automatically."
-- Wait for the tool to return
-- If success: call `auth_status` to confirm, report result
-- If timeout/fail: show the auth URL and instruct user to open it manually, then call `start_oauth` again with the `redirect_url` parameter once they have it
+## Important
+- `start_oauth` BLOCKS until auth completes (up to 5 min) — do NOT call other tools while waiting
+- If the user is on a headless server, pass `open_browser: false` and give them the auth URL to open manually
+- After any successful auth, the server auto-refreshes tokens every 25 minutes
