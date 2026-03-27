@@ -21,13 +21,19 @@ async function request(url: string, options: RequestInit = {}): Promise<any> {
     );
   }
 
+  const method = (options.method || "GET").toUpperCase();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...options.headers as Record<string, string>,
+  };
+  // Schwab rejects GET requests that include Content-Type
+  if (method !== "GET") {
+    headers["Content-Type"] = "application/json";
+  }
+
   const resp = await fetch(url, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!resp.ok) {
