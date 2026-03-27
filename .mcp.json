@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "schwab": {
-      "command": "bun",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/launch.sh"],
       "env": {
         "SCHWAB_ENABLE_TRADING": "true"
       }
