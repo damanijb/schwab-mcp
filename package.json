@@ -1,0 +1,21 @@
+{
+  "name": "schwab-mcp",
+  "version": "1.0.0",
+  "description": "Schwab MCP server for AI agents — accounts, trading, market data with OAuth2 auth",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "schwab-mcp": "src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "auth": "bun run src/auth/cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0"
+  }
+}

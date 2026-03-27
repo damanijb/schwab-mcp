@@ -1,0 +1,5 @@
+{
+  "name": "schwab-mcp",
+  "version": "1.0.0",
+  "description": "Schwab brokerage MCP server — accounts, trading, market data with OAuth2 token management"
+}

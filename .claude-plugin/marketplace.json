@@ -1,0 +1,16 @@
+{
+  "name": "schwab-mcp-marketplace",
+  "description": "Schwab brokerage MCP server for AI agents",
+  "plugins": [
+    {
+      "name": "schwab-mcp",
+      "source": "./",
+      "description": "Schwab MCP server — accounts, trading, market data with OAuth2 auth",
+      "version": "1.0.0"
+    }
+  ],
+  "owner": {
+    "name": "Damani Brown",
+    "url": "https://github.com/damanijb"
+  }
+}
